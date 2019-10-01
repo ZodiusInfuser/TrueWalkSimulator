@@ -4,8 +4,8 @@ TrueWalk is a motion planning and gait generation system for controlling virtual
 ## About
 This presents my latest efforts to create a walking algorithm that is both powerful enough to produce dynamic motion of statically-stable walking robots and light-weight enough to be portable over to real hardware in the future.
 
-Here is a demo of a Decapod walking in a basic Unity scene
-[![Video of a simulated decapod walking](https://i.imgur.com/ezKssWB.png)](https://www.youtube.com/watch?v=jciutQUr8NA)
+Here is a demo of a quadruped robot walking in a basic Unity scene
+[![Video of a simulated quadruped walking](https://i.imgur.com/hXo4Yck.png)](https://www.youtube.com/watch?v=8O2hRkViiVs)
 
 ## Background
 My initial exploration of walking algorithms was around 15 years ago when I created the TrueWalkScript for the video game Total Annihilation. In that game "bots" play animations as they move around to give the illusion of walking. This was fine for the base game but as the modding community created ever bigger bots this illusion broke down, requiring a more advanced system that would accurately position the legs whilst the bot moved, but also be able to handle sudden direction changes. Below are two examples from the game that use the TrueWalkScript.
