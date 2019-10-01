@@ -1,5 +1,5 @@
 # TrueWalk Simulator
-TrueWalk is a motion planning and gait generation system for controlling virtual and real-world multi-legged robots. This repository is for the Unity simulator version of the system (currently the only version).
+TrueWalk is a motion planning and gait generation system for controlling virtual and real-world multi-legged robots. This repository is for the Unity simulator version of the system (currently the only version). Built in Unity version 2018.2.18f1.
 
 ## About
 This presents my latest efforts to create a walking algorithm that is both powerful enough to produce dynamic motion of statically-stable walking robots and light-weight enough to be portable over to real hardware in the future.
