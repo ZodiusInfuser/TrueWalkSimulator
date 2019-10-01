@@ -24,7 +24,7 @@ public class Motion
         LinearVelocity = linearVelocity;
         AngularVelocity = angularVelocity;
         RotationOrigin = rotationOrigin;
-    }    
+    }
 
     /// <summary>
     /// Create a new motion with the given linear and angular velocity components.
@@ -95,7 +95,7 @@ public class Motion
     /// <returns>True if there is a translation</returns>
     public bool HasTranslation()
     {
-        return Mathf.Abs(LinearVelocity.magnitude) > 0.001f;
+        return LinearVelocity.sqrMagnitude > 0.0f;
     }
 
     /// <summary>
@@ -146,6 +146,17 @@ public class Motion
     }
 
     /// <summary>
+    /// Creates a copy of this motion with is linear and angular velocity components scaled
+    /// by the provided value. The rotation origin is unaltered.
+    /// </summary>
+    /// <param name="scale">The scale amount</param>
+    /// <returns>A scaled copy of this motion</returns>
+    public Motion Scaled(float scale)
+    {
+        return new Motion(LinearVelocity * scale, AngularVelocity * scale, RotationOrigin);
+    }
+
+    /// <summary>
     /// Computes the motion that would move the start point to the end point, relative to the start point.
     /// </summary>
     /// <param name="start">The point the motion is from</param>
@@ -161,10 +172,10 @@ public class Motion
 
         //Is there a linear separation between the two points?
         float chordLength = distDiff.magnitude;
-        if (chordLength > 0.001f)
+        if (chordLength > 0.0f) //Made this smaller, was 0.001f
         {
             //Is there an angular separation between the two points?
-            if (Mathf.Abs(angleDiff) > 0.001f)
+            if (Mathf.Abs(angleDiff) > 0.0001f) //Made this smaller, was 0.001f
             {
                 //Use the distance between the two points as the chord length for calculating the new rotation origin
                 float halfChord = chordLength / 2.0f;

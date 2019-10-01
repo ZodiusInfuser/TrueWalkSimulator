@@ -31,7 +31,7 @@ public class MotionPoint
     //--------------------------------------------------
 
     /// <summary>
-    /// Creats a new motion point with the provided position and rotation in local space.
+    /// Creates a new motion point with the provided position and rotation in local space.
     /// </summary>
     /// <param name="x">The local x position</param>
     /// <param name="z">The local z position</param>
@@ -42,7 +42,7 @@ public class MotionPoint
     }
 
     /// <summary>
-    /// Creats a new motion point with the provided position and rotation,
+    /// Creates a new motion point with the provided position and rotation,
     /// either in local space, or relative to the provided parent.
     /// </summary>
     /// <param name="x">The local/relative x position</param>
@@ -50,13 +50,13 @@ public class MotionPoint
     /// <param name="angle">The local/relative angle</param>
     /// <param name="parent">The motion point this one will internally be relative to</param>
     /// <param name="isRelative">Whether or not the position and rotation are relative (defaults to true)</param>
-    public MotionPoint(float x, float z, float angle, MotionPoint parent, bool isRelative = true)
-    {
-        if (isRelative)
-            SetRelative(x, z, angle, parent);
-        else
-            SetLocal(x, z, angle, parent);
-    }
+    //public MotionPoint(float x, float z, float angle, MotionPoint parent, bool isRelative = true)
+    //{
+    //    if (isRelative)
+    //        SetRelative(x, z, angle, parent);
+    //    else
+    //        SetLocal(x, z, angle, parent);
+    //}
 
 
     //--------------------------------------------------
@@ -173,6 +173,37 @@ public class MotionPoint
     }
 
     /// <summary>
+    /// Creates a new motion point with the provided position and rotation in local space,
+    /// but internally relative to the provided parent.
+    /// </summary>
+    /// <param name="x">The local x position</param>
+    /// <param name="z">The local z position</param>
+    /// <param name="angle">The local angle</param>
+    /// <param name="parent">The motion point the created one will internally be relative to</param>
+    /// <returns>A new motion point</returns>
+    public static MotionPoint Local(float x, float z, float angle, MotionPoint parent)
+    {
+        MotionPoint point = Identity;
+        point.SetLocal(x, z, angle, parent);
+        return point;
+    }
+
+    /// <summary>
+    /// Creates a new motion point with the provided position and rotation, relative to the provided parent.
+    /// </summary>
+    /// <param name="x">The relative x position</param>
+    /// <param name="z">The relative z position</param>
+    /// <param name="angle">The relative angle</param>
+    /// <param name="parent">The motion point the created one will be relative to</param>
+    /// <returns>A new motion point</returns>
+    public static MotionPoint Relative(float x, float z, float angle, MotionPoint parent)
+    {
+        MotionPoint point = Identity;
+        point.SetRelative(x, z, angle, parent);
+        return point;
+    }
+
+    /// <summary>
     /// Sets this point to the same position and rotation in local space,
     /// but internally relative to the provided parent.
     /// </summary>
@@ -199,7 +230,11 @@ public class MotionPoint
     /// <returns>A new motion point</returns>
     public MotionPoint LocalTo(MotionPoint newParent)
     {
-        return new MotionPoint(Position.x, Position.z, Angle, newParent, false);
+        //Workaround for situation where zeros get passed in rather than the relative values
+        float x = Position.x;
+        float z = Position.z;
+        float a = Angle;
+        return Local(x, z, a, newParent);
     }
 
     /// <summary>
@@ -209,15 +244,24 @@ public class MotionPoint
     /// <returns>A new motion point</returns>
     public MotionPoint RelativeTo(MotionPoint newParent)
     {
-        return new MotionPoint(RelativeX, RelativeZ, RelativeAngle, newParent, true);
+        //Workaround for situation where zeros get passed in rather than the relative values
+        float x = RelativeX;
+        float z = RelativeZ;
+        float a = RelativeAngle;
+        return Relative(x, z, a, newParent);
+        //return Relative(RelativeX, RelativeZ, RelativeAngle, newParent);
     }
+
+    //public MotionPoint RelativeTo(MotionPoint newParent)
+    //{
+    //    return Relative(RelativeX, RelativeZ, RelativeAngle, newParent);
+    //}
 
     /// <summary>
     /// Applies the provided local motion to this point.
     /// This point will loose any relation it had to a parent point.
     /// </summary>
     /// <param name="motion">The local motion to apply</param>
-    /// <returns>A new motion point</returns>
     public void SetLocalMove(Motion motion)
     {
         //Get the angle of the two points
@@ -361,7 +405,7 @@ public class MotionPoint
             //Calculate the end position relative to the start point
             Vector3 endPosition;
             if (motion.HasRotation())
-            {   
+            {
                 Vector3 localRotOrigin = Util.Rotate(motion.RotationOrigin, startAngle) + Position;
                 endPosition = Util.Rotate(Position - localRotOrigin, motion.AngularVelocity) + localRotOrigin;
             }
@@ -404,6 +448,21 @@ public class MotionPoint
         Position = new Vector3(BakedMatrix.GetColumn(3).x, BakedMatrix.GetColumn(3).y, BakedMatrix.GetColumn(3).z);
         Forward = new Vector3(BakedMatrix.GetColumn(2).x, BakedMatrix.GetColumn(2).y, BakedMatrix.GetColumn(2).z);
         Side = new Vector3(BakedMatrix.GetColumn(0).x, BakedMatrix.GetColumn(0).y, BakedMatrix.GetColumn(0).z);
+    }
+
+    /// <summary>
+    /// Create a motion point from a provided transform, that is relative to a base transform.
+    /// The returned MotionPoint will be local to a parent MotionPoint
+    /// </summary>
+    /// <param name="baseTrans"></param>
+    /// <param name="trans"></param>
+    /// <param name="parent"></param>
+    /// <returns></returns>
+    public static MotionPoint FromTransform(Transform baseTrans, Transform trans, MotionPoint parent)
+    {
+        Vector3 localPos; Quaternion localRot;
+        Util.CalcRelativeTo(baseTrans, trans, out localPos, out localRot);
+        return Local(localPos.x, localPos.z, localRot.eulerAngles.y, parent);
     }
 
     /// <summary>

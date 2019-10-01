@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using UnityEditor;
+using System.Collections.Generic;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Static Classes
@@ -9,6 +9,33 @@ using UnityEditor;
 /// </summary>
 public static class Util
 {
+    //http://csharphelper.com/blog/2014/08/determine-where-two-lines-intersect-in-c/
+    public static bool FindRayRayIntersection(Vector3 p3, Vector3 p4, Vector3 p1, Vector3 p2, out Vector3 intersection)
+    {
+        // Get the segments' parameters.
+        float dx12 = p2.x;
+        float dz12 = p2.z;
+        float dx34 = p4.x;
+        float dz34 = p4.z;
+
+        // Solve for t1 and t2
+        float denominator = (dz12 * dx34 - dx12 * dz34);
+
+        float t1 = ((p1.x - p3.x) * dz34 + (p3.z - p1.z) * dx34) / denominator;
+        if (float.IsInfinity(t1))
+        {
+            // The lines are parallel (or close enough to it).
+            intersection = new Vector3(float.NaN, 0.0f, float.NaN);
+            return false;
+        }
+
+        // Find the point of intersection.
+        intersection = new Vector3(p1.x + dx12 * t1, 0.0f, p1.z + dz12 * t1);
+
+        // The segments intersect if t1 and t2 are between 0 and 1.
+        return true;// (t1 >= -0.00001) && (t1 <= 1.00001);// && (t2 >= 0) && (t2 <= 1));
+    }
+
     //http://csharphelper.com/blog/2014/08/determine-where-two-lines-intersect-in-c/
     public static bool FindRayLineIntersection(Vector3 p3, Vector3 p4, Vector3 p1, Vector3 p2, out Vector3 intersection)
     {
@@ -162,6 +189,16 @@ public static class Util
         }
     }
 
+    public static float SignedYAngle(Vector3 from, Vector3 to)
+    {
+        return WrapAngle((Mathf.Atan2(from.z, from.x) - Mathf.Atan2(to.z, to.x)) * Mathf.Rad2Deg);
+    }
+
+    public static Vector3 FlattenY(Vector3 vector)
+    {
+        return new Vector3(vector.x, 0.0f, vector.z);
+    }
+
     public static Vector3 Rotate(Vector3 vector, float yAngle)
     {
         float angleRad = yAngle * Mathf.Deg2Rad;
@@ -195,6 +232,11 @@ public static class Util
         return angle;
     }
 
+    public static float MapFloat(float val, float minIn, float maxIn, float minOut, float maxOut)
+    {
+        return (val - minIn) * (maxOut - minOut) / (maxIn - minIn) + minOut;
+    }
+
     public static void DrawEllipse(Vector3 pos, Vector3 forward, Vector3 up, float radiusX, float radiusY, int segments, Color color, float duration = 0)
     {
         float angle = 0f;
@@ -210,6 +252,31 @@ public static class Util
             if (i > 0)
             {
                 Debug.DrawLine(rot * lastPoint + pos, rot * thisPoint + pos, color, duration);
+            }
+
+            lastPoint = thisPoint;
+            angle += 360f / segments;
+        }
+    }
+
+    public static void DrawEllipseDashed(Vector3 pos, Vector3 forward, Vector3 up, float radiusX, float radiusY, int segments, Color color, bool bStartDash = true, float duration = 0)
+    {
+        float angle = 0f;
+        Quaternion rot = Quaternion.LookRotation(forward, up);
+        Vector3 lastPoint = Vector3.zero;
+        Vector3 thisPoint = Vector3.zero;
+
+        bool bDraw = bStartDash;
+        for (int i = 0; i < segments + 1; i++)
+        {
+            thisPoint.x = Mathf.Sin(Mathf.Deg2Rad * angle) * radiusX;
+            thisPoint.z = Mathf.Cos(Mathf.Deg2Rad * angle) * radiusY;
+
+            if (i > 0)
+            {
+                if (bDraw)
+                    Debug.DrawLine(rot * lastPoint + pos, rot * thisPoint + pos, color, duration);
+                bDraw = !bDraw;
             }
 
             lastPoint = thisPoint;
@@ -253,6 +320,109 @@ public static class Util
     //    float fA = (fPeakH - fStartH) / (fH * fH);
     //    return -fA * ((fX - fH) * (fX - fH)) + fPeakH;
     //}
+
+    public static void FindChildrenWithAnimation(Transform parent, List<Animation> animList)
+    {
+        foreach (Transform child in parent)
+        {
+            if (child.gameObject.activeSelf)
+            {
+                Animation anim = child.GetComponent<Animation>();
+                if (anim != null)
+                    animList.Add(anim);
+                else
+                    FindChildrenWithAnimation(child, animList);
+            }
+        }
+    }
+
+    public static void CalcRelativeTo(Transform baseTrans, Transform trans, out Vector3 posOut, out Quaternion rotOut)
+    {
+        Matrix4x4 relative = baseTrans.worldToLocalMatrix * trans.localToWorldMatrix;
+        posOut = relative.MultiplyPoint(Vector3.zero);
+        rotOut = Quaternion.LookRotation(relative.GetColumn(2), relative.GetColumn(1));
+    }
+
+    // To find orientation of ordered triplet (p, q, r). 
+    // The function returns following values 
+    // 0 --> p, q and r are colinear 
+    // 1 --> Clockwise 
+    // 2 --> Counterclockwise 
+    public static int Orientation(Vector3 p, Vector3 common, Vector3 r)
+    {
+        Vector3 ptq = common - p;
+        Vector3 qtr = r - common;
+        float val = (ptq.z * qtr.x) - (ptq.x * qtr.z);
+
+        if (Mathf.Abs(val) < 0.000001f) return 0; // collinear 
+        return (val > 0) ? 1 : 2; // clock or counterclock wise 
+    }
+
+    public static float SignedCrossProductXZ(Vector3 u, Vector3 v)
+    {
+        return (u.x * v.z) - (u.z * v.x);
+    }
+
+    //From: https://www.geeksforgeeks.org/convex-hull-set-1-jarviss-algorithm-or-wrapping/
+    public static bool ConvexHull(List<Vector3> points, out List<Vector3> hull)
+    {
+        // There must be at least 3 points 
+        if (points.Count < 3)
+        {
+            hull = null;
+            return false;
+        }
+
+        // Initialize Result 
+        hull = new List<Vector3>();
+
+        // Find the leftmost point 
+        int l = 0;
+        for (int i = 1; i < points.Count; i++)
+            if (points[i].x < points[l].x)
+                l = i;
+
+        // Start from leftmost point, keep moving  
+        // counterclockwise until reach the start point 
+        // again. This loop runs O(h) times where h is 
+        // number of points in result or output. 
+        int p = l, q;
+        do
+        {
+            // Add current point to result 
+            hull.Add(points[p]);
+
+            if (hull.Count > points.Count)
+            {
+                Debug.LogError("Convex Hull Failed");
+                return false;
+            }
+
+            // Search for a point 'q' such that  
+            // orientation(p, x, q) is counterclockwise  
+            // for all points 'x'. The idea is to keep  
+            // track of last visited most counterclock- 
+            // wise point in q. If any point 'i' is more  
+            // counterclock-wise than q, then update q. 
+            q = (p + 1) % points.Count;
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                // If i is more counterclockwise than  
+                // current q, then update q 
+                if (Orientation(points[p], points[i], points[q]) == 2)
+                    q = i;
+            }
+
+            // Now q is the most counterclockwise with 
+            // respect to p. Set p as q for next iteration,  
+            // so that q is added to result 'hull' 
+            p = q;
+
+        } while (p != l); // While we don't come to first point 
+
+        return true;
+    }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
